@@ -2,7 +2,7 @@ import os
 import os.path
 import re
 from datetime import datetime
-from typing import Final, List, Dict, Pattern, Callable
+from typing import Final, Pattern, Callable
 
 ###################################################################################################
 
@@ -41,7 +41,7 @@ class NoteMarkdown:
 		else:
 			return None
 
-	def get_note_links(self, text: str) -> List[str]:
+	def get_note_links(self, text: str) -> list[str]:
 		"""Extract links from note text"""
 		return self.link_regex.findall(text)
 
@@ -100,7 +100,7 @@ class NoteMarkdown:
 		"""Remove backlinks section from note text"""
 		return self.backlinks_section_pattern.sub("", text)
 
-	def append_backlinks(self, text: str, links: List[str]) -> str:
+	def append_backlinks(self, text: str, links: list[str]) -> str:
 		return text.rstrip() + "\n" + \
 			self.backlinks_section.format(timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")) + \
 			"".join(list(map(lambda l: "\n- " + l, links)))
@@ -136,13 +136,13 @@ class Note:
 			file.truncate()
 			file.write(self.file_content.rstrip() + "\n")
 
-	def backlinks_has_changed(self, linking_notes: List["Note"]) -> bool:
+	def backlinks_has_changed(self, linking_notes: list["Note"]) -> bool:
 		current_list = set(self.markdown.get_backlinks(self.file_content))
 		new_list = set(map(lambda n: (n.get_id(), n.get_title()), linking_notes))
 		# If there is any added or removed link, update the section
 		return len(current_list ^ new_list) > 0
 
-	def update_backlinks(self, linking_notes: List["Note"], overwrite=False) -> bool:
+	def update_backlinks(self, linking_notes: list["Note"], overwrite=False) -> bool:
 		if overwrite or self.backlinks_has_changed(linking_notes):
 			self.file_content = self.markdown.remove_backlinks(self.file_content)
 			if len(linking_notes) > 0:
@@ -182,7 +182,7 @@ class NoteCollection:
 	def import_files(self, path=".", extension=".md", noteFactory: Callable[[str], Note]=None) -> None:
 		"""Import files with notes from the given path"""
 
-		self.notes: Dict[str, Note] = {}
+		self.notes: dict[str, Note] = {}
 
 		if not noteFactory:
 			noteFactory = lambda file_name: Note(file_name)
@@ -203,7 +203,7 @@ class NoteCollection:
 
 	def find_backlinks(self) -> None:
 		# Key = target note id
-		self.backlinks: Dict[str, List[Note]] = {}
+		self.backlinks: dict[str, list[Note]] = {}
 
 		for note in self.notes.values():
 			for linked_id in note.links:
@@ -213,9 +213,9 @@ class NoteCollection:
 					self.backlinks[linked_id] = [note]
 
 	def get_more_note_data(self) -> None:
-		self.orphans: List[Note] = []
-		self.notes_without_id: List[Note] = []
-		self.broken_links: List[str] = []
+		self.orphans: list[Note] = []
+		self.notes_without_id: list[Note] = []
+		self.broken_links: list[str] = []
 
 		for note in self.notes.values():
 			if not note.id:
