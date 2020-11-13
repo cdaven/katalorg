@@ -117,7 +117,11 @@ class Note:
 
 	def read_from_file(self) -> None:
 		with open(self.file_path, "r", encoding="utf-8") as file:
+			try:
 				self.file_content = file.read()
+			except:
+				print(f"Exception reading file {self.file_path}")
+				raise
 
 		# Don't analyse generated backlinks
 		file_content_except_backlinks = self.markdown.remove_backlinks(self.file_content)
@@ -163,7 +167,7 @@ class Note:
 	def get_id(self) -> str:
 		return self.id or ""
 
-	def get_title(self) -> str:
+	def get_title(self, default="(no title)") -> str:
 		if self.title:
 			return self.title
 		else:
@@ -172,7 +176,7 @@ class Note:
 			if file_name_without_id:
 				return file_name_without_id
 			else:
-				return "(no title)"
+				return default
 
 	def __str__(self):
 		return self.file_name + ": " + self.get_id() + ", " + self.get_title()

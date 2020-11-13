@@ -3,7 +3,11 @@ from datetime import datetime
 import os
 import os.path
 import sys
-import zettel
+
+try:
+	from . import zettel
+except ImportError:
+	import zettel
 
 def main(args):
 	path = os.path.abspath(args.path)
