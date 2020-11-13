@@ -1,5 +1,6 @@
 import os
 import os.path
+import pathlib
 import re
 from datetime import datetime
 from typing import Final, Pattern, Callable
@@ -187,9 +188,9 @@ class NoteCollection:
 		if not noteFactory:
 			noteFactory = lambda file_name: Note(file_name)
 
-		for file_name in os.listdir(path):
-			file_path = os.path.join(path, file_name)
-			if not os.path.isfile(file_path) or not file_name.endswith(extension):
+		for file_name_obj in pathlib.Path(path).rglob("*" + extension):
+			file_path = str(file_name_obj)
+			if not os.path.isfile(file_path) or not file_name_obj.suffix == extension:
 				continue
 
 			note = noteFactory(file_path)
