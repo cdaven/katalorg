@@ -115,8 +115,8 @@ class Note:
 		self.read_from_file()
 
 	def read_from_file(self) -> None:
-		with open(self.file_path, "r") as file:
-			self.file_content = file.read()
+		with open(self.file_path, "r", encoding="utf-8") as file:
+				self.file_content = file.read()
 
 		# Don't analyse generated backlinks
 		file_content_except_backlinks = self.markdown.remove_backlinks(self.file_content)
@@ -131,7 +131,7 @@ class Note:
 			self.id = self.markdown.get_note_id(self.file_name)
 	
 	def write_to_file(self):
-		with open(self.file_path, "w") as file:
+		with open(self.file_path, "w", encoding="utf-8") as file:
 			file.seek(0)
 			file.truncate()
 			file.write(self.file_content.rstrip() + "\n")
