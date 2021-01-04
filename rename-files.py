@@ -20,7 +20,7 @@ def main(args):
         sys.exit(1)
 
     parser = zettel.NoteMarkdownParser()
-    def noteFactory(file_name: str): return zettel.Note(zettel.NoteFile(file_name), parser)
+    def noteFactory(filename: str): return zettel.Note(zettel.NoteFile(filename), parser)
 
     collection = zettel.NoteCollection()
     collection.import_files(args.path, args.extension, noteFactory)
@@ -28,7 +28,7 @@ def main(args):
     changed_ids = []
 
     for note in collection.notes.values():
-        old_file_name = note.get_file_name()
+        old_file_name = note.get_filename()
         old_id = note.get_id()
 
         # Don't rename index/outline notes
@@ -39,7 +39,7 @@ def main(args):
             print(f"- Ignores file {old_file_name} without ID")
             continue
 
-        title = strip_date_from_title(note.get_title(default=""))
+        title = strip_date_from_title(note.get_title())
 
         date = get_date_from_file_name(old_file_name)
         if date is not None and len(date) < 14 and not old_id.startswith(date):

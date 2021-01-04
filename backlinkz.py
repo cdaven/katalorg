@@ -17,7 +17,7 @@ def main(args):
         sys.exit(1)
 
     parser = zettel.NoteMarkdownParser()
-    def noteFactory(file_name: str): return zettel.Note(zettel.NoteFile(file_name), parser)
+    def noteFactory(filename: str): return zettel.Note(zettel.NoteFile(filename), parser)
 
     print("# Backlinkz Report\n")
     print(f"Path:        {path}")
@@ -35,7 +35,7 @@ def main(args):
     if args.missing and collection.notes_without_id:
         print("\n## Notes Without ID\n")
         for note in collection.notes_without_id:
-            print(f"- {note.get_file_name()}")
+            print(f"- {note.get_filename()}")
 
     if args.broken and collection.broken_links:
         print("\n## Broken Links\n")
@@ -45,16 +45,18 @@ def main(args):
     if args.orphans and collection.orphans:
         print("\n## Orphans\n")
         for note in collection.orphans:
-            print(f"- {parser.link(note.get_id())} {note.get_title()}")
+            print(f"- {note.create_link_to()}")
 
-    # TODO: Find links to [[title]] instead of ID
-    # TODO: Handle backlinks from notes without ID (use title instead)
     # TODO: Generate PUML graph of links
 
 
 def parse_args():
+    default_path = os.getcwd()
+    if __debug__:
+        default_path = "C:/Users/ChristianDaven/Sync/Notes"
+
     parser = argparse.ArgumentParser(description="Add backlinks to zettelkasten notes")
-    parser.add_argument("path", nargs="?", default=os.getcwd())
+    parser.add_argument("path", nargs="?", default=default_path)
     parser.add_argument("-o", "--overwrite", action="store_true", help="overwrite existing backlinks, even if the same")
     parser.add_argument("-e", "--extension", default=".md", help="file extension of note files")
     parser.add_argument("--missing", action="store_true", default=False, help="print list of notes missing id")

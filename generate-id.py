@@ -18,7 +18,7 @@ def main(args):
         sys.exit(1)
 
     parser = zettel.NoteMarkdownParser()
-    def noteFactory(file_name: str): return zettel.Note(zettel.NoteFile(file_name), parser)
+    def noteFactory(filename: str): return zettel.Note(zettel.NoteFile(filename), parser)
 
     collection = zettel.NoteCollection()
     collection.import_files(args.path, args.extension, noteFactory)

@@ -2,22 +2,32 @@ import os
 import os.path
 import pathlib
 import re
-from datetime import datetime
+import collections
 from typing import Callable, Optional
 
 
+def stricmp(a: Optional[str], b: Optional[str]) -> bool:
+    """Case insensitive string comparison"""
+    if a and b:
+        return a.casefold() == b.casefold()
+    else:
+        return False
+
+
 class RegEx:
+    NEWLINE = r"(?:\r?\n)"
+
     @staticmethod
     def as_word(s: str) -> str:
         return r"\b" + s + r"\b"
 
     @staticmethod
     def not_followed_by(s: str) -> str:
-        return "(?!" + s + ")"
+        return f"(?!{s})"
 
     @staticmethod
     def not_preceded_by(s: str) -> str:
-        return "(?<!" + s + ")"
+        return f"(?<!{s})"
 
 
 class NoteMarkdownParser:
@@ -25,7 +35,7 @@ class NoteMarkdownParser:
     DEFAULT_LINK_PREFIX = "[["
     DEFAULT_LINK_POSTFIX = "]]"
 
-    def __init__(self, id_pattern: str = "", link_prefix="", link_postfix=""):
+    def __init__(self, id_pattern: str = "", link_prefix: str = "", link_postfix: str = ""):
         self.__id_pattern = RegEx.as_word(id_pattern or NoteMarkdownParser.DEFAULT_ID_PATTERN)
         self.__link_prefix = link_prefix or NoteMarkdownParser.DEFAULT_LINK_PREFIX
         self.__link_postfix = link_postfix or NoteMarkdownParser.DEFAULT_LINK_POSTFIX
@@ -33,16 +43,16 @@ class NoteMarkdownParser:
         # Matches an ID not between link start and link end
         self.__id_regex = re.compile(self.get_nonlink_id_regex_pattern())
 
-        # Matches an ID between link start and link end
-        self.__link_regex = re.compile(self.get_link_regex_pattern())
+        # Matches anything between link start and link end
+        self.__link_regex = re.compile(self.get_link_regex_pattern(id_pattern=r"[^][]+?"))
 
         # Matches Markdown level 1 header on a line of its own
         self.__title_regex = re.compile(r"^#\s+(.+)$", re.MULTILINE)
 
-        self.__backlinks_section = "\n---\n\n**Backlinks** <!-- generated on {timestamp} -->\n"
+        self.__backlinks_section_heading = "\n-----------------\n**Links to this note**\n"
         self.__backlinks_section_pattern = re.compile(
-            re.escape(self.__backlinks_section).replace(r"\{timestamp\}", "(.+?)") + r"(.+)\Z",
-            re.DOTALL
+            r"\n[-*]{3,}\n+\*\*(?:Backlinks|Links to this note)\*\*(.+)\Z".replace(r"\n", RegEx.NEWLINE),
+            re.DOTALL | re.IGNORECASE
         )
 
     def get_note_id(self, text: str) -> Optional[str]:
@@ -54,9 +64,9 @@ class NoteMarkdownParser:
         else:
             return None
 
-    def get_note_links(self, text: str) -> list[str]:
+    def get_note_links(self, text: str) -> set[str]:
         """Extract links from note text"""
-        return self.__link_regex.findall(text)
+        return set(self.__link_regex.findall(text))
 
     def get_note_title(self, text: str) -> Optional[str]:
         """Extract level 1 title from note text"""
@@ -70,7 +80,7 @@ class NoteMarkdownParser:
     def remove_id_prefix(self, text: str) -> str:
         """Remove potential ID prefix from string"""
 
-        id = re.search(r"^" + self.__id_pattern + r"\s*", text)
+        id = re.search(fr"^{self.__id_pattern}\s*", text)
         if id:
             return text.removeprefix(id.group(0))
         else:
@@ -85,20 +95,19 @@ class NoteMarkdownParser:
         if not id_pattern:
             id_pattern = self.__id_pattern
 
-        return re.escape(self.__link_prefix) + "(" + id_pattern + ")" + re.escape(self.__link_postfix)
+        return re.escape(self.__link_prefix) + f"({id_pattern})" + re.escape(self.__link_postfix)
 
-    def link(self, id: str) -> str:
-        if id:
-            return self.__link_prefix + id + self.__link_postfix
+    def create_link(self, uri: str) -> str:
+        if uri:
+            return self.__link_prefix + uri + self.__link_postfix
         else:
             return ""
 
-    def get_backlinks(self, text: str) -> list:
-        section = self.__backlinks_section_pattern.search(text)
-        if section:
-            # TODO: Fångar inte upp länkar med icke fullgoda ZID. Är det ett problem?
-            pattern = r"^- " + self.get_link_regex_pattern(r".*?") + r" (.*)$"
-            return re.findall(pattern, section.group(2), re.MULTILINE)
+    def get_backlinks(self, text: str) -> list[str]:
+        match = self.__backlinks_section_pattern.search(text)
+        if match:
+            section = match.group(1)
+            return re.findall(r"^[-*] (.*)$", section, re.MULTILINE)
         else:
             return []
 
@@ -108,7 +117,7 @@ class NoteMarkdownParser:
 
     def append_backlinks(self, text: str, links: list[str]) -> str:
         return text.rstrip() + "\n" + \
-            self.__backlinks_section.format(timestamp=datetime.now().strftime("%Y-%m-%d %H:%M")) + \
+            self.__backlinks_section_heading + \
             "".join(list(map(lambda l: "\n- " + l, links)))
 
 
@@ -119,6 +128,9 @@ class NoteFile:
 
     def get_name(self) -> str:
         return os.path.basename(self.__path)
+
+    def get_name_without_extension(self) -> str:
+        return os.path.splitext(self.get_name())[0]
 
     def read(self) -> str:
         with open(self.__path, "r", encoding=self.__encoding) as file:
@@ -140,22 +152,17 @@ class Note:
     def __init__(self, file: NoteFile, parser: Optional[NoteMarkdownParser] = None):
         self.__file = file
         self.__parser = parser or NoteMarkdownParser()
-        self.read_from_file()
+        self.__read_from_file()
 
-    def read_from_file(self) -> None:
+    def __read_from_file(self):
         self.__content = self.__file.read()
-
-        # Don't analyse generated backlinks
         content_except_backlinks = self.__parser.remove_backlinks(self.__content)
-
-        self.__id = self.__parser.get_note_id(content_except_backlinks)
         self.__title = self.__parser.get_note_title(content_except_backlinks)
         self.__links = self.__parser.get_note_links(content_except_backlinks)
-
-        if not self.__id:
-            # Try if filename contains ID if note doesn't,
-            # but the note should be able to override filename
-            self.__id = self.__parser.get_note_id(self.__file.get_name())
+        self.__uri = \
+            self.__parser.get_note_id(content_except_backlinks) or \
+            self.__parser.get_note_id(self.get_filename()) or \
+            self.get_filename_without_extension()
 
     def write_to_file(self):
         self.__file.write(self.__content.rstrip() + "\n")
@@ -164,50 +171,64 @@ class Note:
         self.__file.rename(name)
 
     def backlinks_has_changed(self, linking_notes: list["Note"]) -> bool:
-        current_list = set(self.__parser.get_backlinks(self.__content))
-        new_list = set(map(lambda n: (n.get_id(), n.get_title()), linking_notes))
+        current_list = list(self.__parser.get_backlinks(self.__content))
+        new_list = list(map(lambda n: n.create_link_to(), linking_notes))
         # If there is any added or removed link, update the section
-        return len(current_list ^ new_list) > 0
+        return collections.Counter(current_list) != collections.Counter(new_list)
 
-    def update_backlinks(self, linking_notes: list["Note"], overwrite=False) -> bool:
+    def update_backlinks(self, linking_notes: list["Note"], overwrite: bool = False) -> bool:
         if overwrite or self.backlinks_has_changed(linking_notes):
-            self.__content = self.__parser.remove_backlinks(self.__content)
+            content = self.__parser.remove_backlinks(self.__content)
             if len(linking_notes) > 0:
-                self.__content = self.__parser.append_backlinks(
-                    self.__content,
+                content = self.__parser.append_backlinks(
+                    content,
                     list(
                         map(
-                            lambda n: f"{self.__parser.link(n.get_id())} {n.get_title()}",
+                            lambda n: n.create_link_to(),
                             linking_notes
                         )
                     )
                 )
+            self.__content = content
             return True
         else:
             return False
 
     def get_id(self) -> str:
-        return self.__id or ""
+        return self.__uri or ""
 
     def set_id(self, id: str):
-        self.__id = id
+        self.__uri = id
 
-    def get_file_name(self) -> str:
+    def get_filename(self) -> str:
+        """Returns file name without path, but with extension"""
         return self.__file.get_name()
 
-    def get_title(self, default: str = "(no title)") -> str:
-        if self.__title:
-            return self.__title
-        else:
-            file_name = os.path.splitext(self.get_file_name())[0]
-            file_name_without_id = self.__parser.remove_id_prefix(file_name)
-            return file_name_without_id or default
+    def get_filename_without_extension(self) -> str:
+        """Returns file name without path and extension"""
+        return self.__file.get_name_without_extension()
 
-    def get_links(self) -> list[str]:
+    def get_title(self) -> str:
+        return \
+            self.__title or \
+            self.__parser.remove_id_prefix(self.get_filename_without_extension())
+
+    def get_uri(self) -> str:
+        """Returns URI for links to this note"""
+        return self.get_id() or self.get_filename_without_extension()
+
+    def create_link_to(self, append_title: bool = True) -> str:
+        uri = self.get_uri()
+        link = self.__parser.create_link(uri)
+        if append_title:
+            title = self.get_title()
+            if title and not stricmp(uri, title):
+                return f"{link} {title}".rstrip()
+
+        return link
+
+    def get_outgoing_links(self) -> set[str]:
         return self.__links
-
-    def __str__(self):
-        return self.get_file_name() + ": " + self.get_id() + ", " + self.get_title()
 
 
 class NoteCollection:
@@ -216,26 +237,26 @@ class NoteCollection:
 
         self.notes: dict[str, Note] = {}
 
-        for file_name_obj in pathlib.Path(path).rglob("*" + extension):
-            file_path = str(file_name_obj)
-            if not os.path.isfile(file_path) or not file_name_obj.suffix == extension:
+        for filename_obj in pathlib.Path(path).rglob("*" + extension):
+            file_path = str(filename_obj)
+            if not os.path.isfile(file_path) or not filename_obj.suffix == extension:
                 continue
 
             self.add_note(noteFactory(file_path))
 
     def add_note(self, note: Note):
-        identifier = note.get_id() or note.get_title(default="") or note.get_file_name()
-        if identifier in self.notes:
-            raise IndexError(f"Duplicate note identifier {identifier}")
+        uri = note.get_uri()
+        if uri in self.notes:
+            raise IndexError(f"Duplicate note URI {uri}")
         else:
-            self.notes[identifier] = note
+            self.notes[uri] = note
 
     def find_backlinks(self) -> None:
         # Key = target note id
         self.backlinks: dict[str, list[Note]] = {}
 
         for note in self.notes.values():
-            for linked_id in note.get_links():
+            for linked_id in note.get_outgoing_links():
                 if linked_id in self.backlinks:
                     self.backlinks[linked_id].append(note)
                 else:
@@ -252,9 +273,9 @@ class NoteCollection:
             elif note.get_id() not in self.backlinks:
                 self.orphans.append(note)
 
-            self.broken_links.extend([link for link in note.get_links() if link not in self.notes])
+            self.broken_links.extend([link for link in note.get_outgoing_links() if link not in self.notes])
 
-    def update_backlinks_sections(self, overwrite=False) -> int:
+    def update_backlinks_sections(self, overwrite: bool = False) -> int:
         count = 0
 
         for backlink in self.backlinks:
