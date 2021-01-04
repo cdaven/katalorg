@@ -6,36 +6,49 @@ from datetime import datetime
 from typing import Callable, Optional
 
 
+class RegEx:
+    @staticmethod
+    def as_word(s: str) -> str:
+        return r"\b" + s + r"\b"
+
+    @staticmethod
+    def not_followed_by(s: str) -> str:
+        return "(?!" + s + ")"
+
+    @staticmethod
+    def not_preceded_by(s: str) -> str:
+        return "(?<!" + s + ")"
+
+
 class NoteMarkdownParser:
     DEFAULT_ID_PATTERN = r"(?:19|20)\d{12}"
     DEFAULT_LINK_PREFIX = "[["
     DEFAULT_LINK_POSTFIX = "]]"
-    WORD_BOUNDARY = r"\b"
 
     def __init__(self, id_pattern: str = "", link_prefix="", link_postfix=""):
-        self.id_pattern = self.as_word(id_pattern or NoteMarkdownParser.DEFAULT_ID_PATTERN)
-        self.link_prefix = link_prefix or NoteMarkdownParser.DEFAULT_LINK_PREFIX
-        self.link_postfix = link_postfix or NoteMarkdownParser.DEFAULT_LINK_POSTFIX
+        self.__id_pattern = RegEx.as_word(id_pattern or NoteMarkdownParser.DEFAULT_ID_PATTERN)
+        self.__link_prefix = link_prefix or NoteMarkdownParser.DEFAULT_LINK_PREFIX
+        self.__link_postfix = link_postfix or NoteMarkdownParser.DEFAULT_LINK_POSTFIX
 
         # Matches an ID not between link start and link end
-        self.id_regex = re.compile(self.get_nonlink_id_regex_pattern())
+        self.__id_regex = re.compile(self.get_nonlink_id_regex_pattern())
 
         # Matches an ID between link start and link end
-        self.link_regex = re.compile(self.get_link_regex_pattern())
+        self.__link_regex = re.compile(self.get_link_regex_pattern())
 
         # Matches Markdown level 1 header on a line of its own
-        self.title_regex = re.compile(r"^#\s+(.+)$", re.MULTILINE)
+        self.__title_regex = re.compile(r"^#\s+(.+)$", re.MULTILINE)
 
-        self.backlinks_section = "\n---\n\n**Backlinks** <!-- generated on {timestamp} -->\n"
-        self.backlinks_section_pattern = re.compile(
-            re.escape(self.backlinks_section).replace(r"\{timestamp\}", "(.+?)") + r"(.+)\Z",
+        self.__backlinks_section = "\n---\n\n**Backlinks** <!-- generated on {timestamp} -->\n"
+        self.__backlinks_section_pattern = re.compile(
+            re.escape(self.__backlinks_section).replace(r"\{timestamp\}", "(.+?)") + r"(.+)\Z",
             re.DOTALL
         )
 
     def get_note_id(self, text: str) -> Optional[str]:
         """Extract ID from note text"""
 
-        match = self.id_regex.search(text)
+        match = self.__id_regex.search(text)
         if match:
             return match.group(0)
         else:
@@ -43,12 +56,12 @@ class NoteMarkdownParser:
 
     def get_note_links(self, text: str) -> list[str]:
         """Extract links from note text"""
-        return self.link_regex.findall(text)
+        return self.__link_regex.findall(text)
 
     def get_note_title(self, text: str) -> Optional[str]:
         """Extract level 1 title from note text"""
 
-        match = self.title_regex.search(text)
+        match = self.__title_regex.search(text)
         if match:
             return match.group(1)
         else:
@@ -57,40 +70,31 @@ class NoteMarkdownParser:
     def remove_id_prefix(self, text: str) -> str:
         """Remove potential ID prefix from string"""
 
-        id = re.search(r"^" + self.id_pattern + r"\s*", text)
+        id = re.search(r"^" + self.__id_pattern + r"\s*", text)
         if id:
             return text.removeprefix(id.group(0))
         else:
             return text
 
     def get_nonlink_id_regex_pattern(self) -> str:
-        return self.not_preceded_by(re.escape(self.link_prefix)) + \
-            "(" + self.id_pattern + ")" + \
-            self.not_followed_by(re.escape(self.link_postfix))
+        return RegEx.not_preceded_by(re.escape(self.__link_prefix)) + \
+            "(" + self.__id_pattern + ")" + \
+            RegEx.not_followed_by(re.escape(self.__link_postfix))
 
     def get_link_regex_pattern(self, id_pattern: str = None) -> str:
         if not id_pattern:
-            id_pattern = self.id_pattern
+            id_pattern = self.__id_pattern
 
-        return re.escape(self.link_prefix) + "(" + id_pattern + ")" + re.escape(self.link_postfix)
+        return re.escape(self.__link_prefix) + "(" + id_pattern + ")" + re.escape(self.__link_postfix)
 
     def link(self, id: str) -> str:
         if id:
-            return self.link_prefix + id + self.link_postfix
+            return self.__link_prefix + id + self.__link_postfix
         else:
             return ""
 
-    def as_word(self, s: str) -> str:
-        return NoteMarkdownParser.WORD_BOUNDARY + s + NoteMarkdownParser.WORD_BOUNDARY
-
-    def not_followed_by(self, s: str) -> str:
-        return "(?!" + s + ")"
-
-    def not_preceded_by(self, s: str) -> str:
-        return "(?<!" + s + ")"
-
     def get_backlinks(self, text: str) -> list:
-        section = self.backlinks_section_pattern.search(text)
+        section = self.__backlinks_section_pattern.search(text)
         if section:
             # TODO: Fångar inte upp länkar med icke fullgoda ZID. Är det ett problem?
             pattern = r"^- " + self.get_link_regex_pattern(r".*?") + r" (.*)$"
@@ -100,11 +104,11 @@ class NoteMarkdownParser:
 
     def remove_backlinks(self, text: str) -> str:
         """Remove backlinks section from note text"""
-        return self.backlinks_section_pattern.sub("", text)
+        return self.__backlinks_section_pattern.sub("", text)
 
     def append_backlinks(self, text: str, links: list[str]) -> str:
         return text.rstrip() + "\n" + \
-            self.backlinks_section.format(timestamp=datetime.now().strftime("%Y-%m-%d %H:%M")) + \
+            self.__backlinks_section.format(timestamp=datetime.now().strftime("%Y-%m-%d %H:%M")) + \
             "".join(list(map(lambda l: "\n- " + l, links)))
 
 
