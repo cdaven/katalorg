@@ -142,10 +142,18 @@ class NoteFile:
             file.truncate()
             file.write(contents)
 
-    def rename(self, name: str):
-        new_path = os.path.join(os.path.dirname(self.__path), name)
+    def rename(self, name: str) -> str:
+        new_path = os.path.join(os.path.dirname(self.__path), NoteFile.escape_filename(name))
         os.rename(self.__path, new_path)
         self.__path = new_path
+        return new_path
+
+    @staticmethod
+    def escape_filename(filename: str) -> str:
+        return \
+               re.sub(r"[<>:*?\"“”]", "",  # Remove these characters
+                      re.sub(r"[/\\]", "-",  # Replace these with a dash
+                             filename))
 
 
 class Note:
@@ -167,8 +175,8 @@ class Note:
     def write_to_file(self):
         self.__file.write(self.__content.rstrip() + "\n")
 
-    def rename_file(self, name: str):
-        self.__file.rename(name)
+    def rename_file(self, name: str) -> str:
+        return self.__file.rename(name)
 
     def backlinks_has_changed(self, linking_notes: list["Note"]) -> bool:
         current_list = list(self.__parser.get_backlinks(self.__content))

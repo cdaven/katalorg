@@ -7,11 +7,6 @@ import re
 import sys
 from typing import Optional
 
-try:
-    from . import zettel
-except ImportError:
-    import zettel
-
 
 def main(args):
     path = os.path.abspath(args.path)
@@ -19,10 +14,10 @@ def main(args):
         print(f"No such directory: '{path}'")
         sys.exit(1)
 
-    parser = zettel.NoteMarkdownParser()
-    def noteFactory(filename: str): return zettel.Note(zettel.NoteFile(filename), parser)
+    parser = NoteMarkdownParser()
+    def noteFactory(filename: str): return Note(NoteFile(filename), parser)
 
-    collection = zettel.NoteCollection()
+    collection = NoteCollection()
     collection.import_files(args.path, args.extension, noteFactory)
 
     changed_ids = []
@@ -52,7 +47,7 @@ def main(args):
             note.set_id(new_id)
             changed_ids.append((old_id, new_id))
 
-        new_file_name = escape_file_name(f"{note.get_id()} {title}".strip()) + args.extension
+        new_file_name = NoteFile.escape_filename(f"{note.get_id()} {title}".strip()) + args.extension
 
         if old_file_name != new_file_name:
             print(f"- Renaming {old_file_name} --> {new_file_name}")
@@ -96,15 +91,8 @@ def get_date_from_file_name(file_name: str) -> Optional[str]:
         return None
 
 
-def escape_file_name(file_name: str) -> str:
-    return \
-        re.sub(r"[<>:*?\"“”]", "",  # Remove these characters
-               re.sub(r"[/\\]", "-",  # Replace these with a dash
-                      file_name))
-
-
 def parse_args():
-    parser = argparse.ArgumentParser(description="Rename zettelkasten note files")
+    parser = argparse.ArgumentParser(description="Rename katalorgkasten note files")
     parser.add_argument("path", nargs="?", default=os.getcwd())
     parser.add_argument("-e", "--extension", default=".md", help="file extension of note files")
     parser.add_argument("-i", "--index", default="§", help="prefix for index files, not to be renamed")
@@ -112,4 +100,11 @@ def parse_args():
 
 
 if __name__ == "__main__":
+    if __package__ is None:
+        import sys, os.path as path
+        sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
+        from katalorg import *
+    else:
+        from .katalorg import *
+
     main(parse_args())

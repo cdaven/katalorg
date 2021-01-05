@@ -1,13 +1,11 @@
 import unittest
-import zettel
-
 
 class TestStringMethods(unittest.TestCase):
 
     def test_get_links(self):
-        note_file = zettel.NoteFile("testdata/Links.md")
+        note_file = NoteFile("testdata/Links.md")
         note_contents = note_file.read()
-        parser = zettel.NoteMarkdownParser()
+        parser = NoteMarkdownParser()
 
         expected_links = set([
             "20210104073402",
@@ -22,9 +20,9 @@ class TestStringMethods(unittest.TestCase):
         self.assertEqual(0, len(links ^ expected_links))
 
     def test_backlinks_section(self):
-        note_file = zettel.NoteFile("testdata/BackLinks.md")
+        note_file = NoteFile("testdata/BackLinks.md")
         note_contents = note_file.read()
-        parser = zettel.NoteMarkdownParser()
+        parser = NoteMarkdownParser()
 
         content = parser.remove_backlinks(note_contents)
         self.assertTrue(content.endswith("Some note text\n"))
@@ -42,4 +40,11 @@ class TestStringMethods(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    if __package__ is None:
+        import sys, os.path as path
+        sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
+        from .src.katalorg import *
+    else:
+        from src.katalorg import *
+
     unittest.main()

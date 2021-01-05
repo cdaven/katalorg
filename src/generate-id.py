@@ -5,11 +5,6 @@ import os.path
 import random
 import sys
 
-try:
-    from . import zettel
-except ImportError:
-    import zettel
-
 
 def main(args):
     path = os.path.abspath(args.path)
@@ -17,10 +12,10 @@ def main(args):
         print(f"No such directory: '{path}'")
         sys.exit(1)
 
-    parser = zettel.NoteMarkdownParser()
-    def noteFactory(filename: str): return zettel.Note(zettel.NoteFile(filename), parser)
+    parser = NoteMarkdownParser()
+    def noteFactory(filename: str): return Note(NoteFile(filename), parser)
 
-    collection = zettel.NoteCollection()
+    collection = NoteCollection()
     collection.import_files(args.path, args.extension, noteFactory)
 
     new_id = suggest_id_from_date(args.date)
@@ -69,4 +64,11 @@ def parse_args():
 
 
 if __name__ == "__main__":
+    if __package__ is None:
+        import sys, os.path as path
+        sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
+        from katalorg import *
+    else:
+        from .katalorg import *
+
     main(parse_args())
