@@ -14,10 +14,10 @@ def main(args):
         print(f"No such directory: '{path}'")
         sys.exit(1)
 
-    parser = NoteMarkdownParser()
-    def noteFactory(filename: str): return Note(NoteFile(filename), parser)
+    parser = katalorg.NoteMarkdownParser()
+    def noteFactory(filename: str): return katalorg.Note(katalorg.NoteFile(filename), parser)
 
-    collection = NoteCollection()
+    collection = katalorg.NoteCollection()
     collection.import_files(args.path, args.extension, noteFactory)
 
     changed_ids = []
@@ -47,7 +47,7 @@ def main(args):
             note.set_id(new_id)
             changed_ids.append((old_id, new_id))
 
-        new_file_name = NoteFile.escape_filename(f"{note.get_id()} {title}".strip()) + args.extension
+        new_file_name = katalorg.NoteFile.escape_filename(f"{note.get_id()} {title}".strip()) + args.extension
 
         if old_file_name != new_file_name:
             print(f"- Renaming {old_file_name} --> {new_file_name}")
@@ -92,7 +92,7 @@ def get_date_from_file_name(file_name: str) -> Optional[str]:
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Rename katalorgkasten note files")
+    parser = argparse.ArgumentParser(description="Rename Zettelkasten note files")
     parser.add_argument("path", nargs="?", default=os.getcwd())
     parser.add_argument("-e", "--extension", default=".md", help="file extension of note files")
     parser.add_argument("-i", "--index", default="§", help="prefix for index files, not to be renamed")
@@ -100,11 +100,7 @@ def parse_args():
 
 
 if __name__ == "__main__":
-    if __package__ is None:
-        import sys, os.path as path
-        sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
-        from katalorg import *
-    else:
-        from .katalorg import *
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    import katalorg
 
     main(parse_args())

@@ -11,14 +11,14 @@ def main(args):
         print(f"No such directory: '{path}'")
         sys.exit(1)
 
-    parser = NoteMarkdownParser()
-    def noteFactory(filename: str): return Note(NoteFile(filename), parser)
+    parser = katalorg.NoteMarkdownParser()
+    def noteFactory(filename: str): return katalorg.Note(katalorg.NoteFile(filename), parser)
 
     print("# Backlinkz Report\n")
     print(f"Path:        {path}")
     print("Time:        " + datetime.now().strftime("%Y-%m-%d %H:%M"))
 
-    collection = NoteCollection()
+    collection = katalorg.NoteCollection()
     collection.import_files(args.path, args.extension, noteFactory)
     print(f"Notes found: {len(collection.notes)}")
     collection.find_backlinks()
@@ -61,11 +61,7 @@ def parse_args():
 
 
 if __name__ == "__main__":
-    if __package__ is None:
-        import sys, os.path as path
-        sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
-        from katalorg import *
-    else:
-        from .katalorg import *
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    import katalorg
 
     main(parse_args())
