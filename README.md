@@ -23,9 +23,13 @@ _(Why is this not a section with its own heading? Syntactically, it probably sho
 Notes can be linked by using either
 
 1. the target note's file name without the extension: `[[Some random thoughts]]`, or
-2. the target note's (Zettelkasten) id
+2. the target note's (Zettelkasten) id: `[[20201020093536]]`
 
 The idea of using an id (pun intended) comes from the Zettelkasten principles, and [Zettlr](https://docs.zettlr.com/en/academic/zkn-method/#internal-linking) specifically.
+
+The script defaults to the same id format as Zettlr, which is 14 digits (a timestamp).
+
+A note is given an id by including it in either the note text (anywhere), or the filename.
 
 ## Inspiration and related projects
 
