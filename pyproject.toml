@@ -11,7 +11,6 @@ homepage = "https://github.com/cdaven/katalorg"
 python = "^3.9"
 
 [tool.poetry.dev-dependencies]
-pytest = "^5.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
