@@ -1,5 +1,9 @@
 # katalorg
 
+_Note that this tool has been superceded by [NoteExplorer](https://github.com/cdaven/noteexplorer). It still works, but won't be maintained by me._
+
+---
+
 Python library/script that help with catalogueing and organizing your [Zettelkasten](https://en.wikipedia.org/wiki/Zettelkasten)-like pile of notes with \[\[wiki-style\]\] links between them.
 
 ## Collecting backlinks
@@ -30,6 +34,8 @@ The idea of using an id (pun intended) comes from the Zettelkasten principles, a
 The script defaults to the same id format as Zettlr, which is 14 digits (a timestamp).
 
 A note is given an id by including it in either the note text (anywhere), or the filename.
+
+The note's title (in the backlink list) is either the first level-1 Markdown heading (`#`) or the filename (after the id).
 
 ## Inspiration and related projects
 
